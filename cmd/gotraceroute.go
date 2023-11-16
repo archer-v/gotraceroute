@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"github.com/aeden/traceroute"
@@ -8,15 +9,10 @@ import (
 )
 
 func printHop(hop traceroute.Hop) {
-	addr := fmt.Sprintf("%v.%v.%v.%v", hop.Address[0], hop.Address[1], hop.Address[2], hop.Address[3])
-	hostOrAddr := addr
-	if hop.Host != "" {
-		hostOrAddr = hop.Host
-	}
-	if hop.Success {
-		fmt.Printf("%-3d %v (%v)  %v\n", hop.TTL, hostOrAddr, addr, hop.ElapsedTime)
+	if hop.IcmpType != 0 {
+		fmt.Printf("%-3d %v (%v)  %vms\n", hop.Step, hop.Node.HostOrAddr(), hop.Node.IP.String(), hop.Elapsed.Milliseconds())
 	} else {
-		fmt.Printf("%-3d *\n", hop.TTL)
+		fmt.Printf("%-3d *\n", hop.Step)
 	}
 }
 
@@ -32,16 +28,16 @@ func main() {
 	flag.Parse()
 	host := flag.Arg(0)
 	options := traceroute.Options{}
-	options.SetRetries(*q - 1)
-	options.SetMaxHops(*m + 1)
-	options.SetFirstHop(*f)
+	options.Retries = *q - 1
+	options.MaxHops = *m + 1
+	options.StartTTL = *f
 
 	ipAddr, err := net.ResolveIPAddr("ip", host)
 	if err != nil {
 		return
 	}
 
-	fmt.Printf("traceroute to %v (%v), %v hops max, %v byte packets\n", host, ipAddr, options.MaxHops(), options.PacketSize())
+	fmt.Printf("traceroute to %v (%v), %v hops max, %v byte packet payload\n", host, ipAddr, options.MaxHops, options.PayloadSize)
 
 	c := make(chan traceroute.Hop, 0)
 	go func() {
@@ -55,7 +51,8 @@ func main() {
 		}
 	}()
 
-	_, err = traceroute.Run(host, &options, c)
+	ctx := context.Background()
+	_, err = traceroute.Run(ctx, host, &options, c)
 	if err != nil {
 		fmt.Printf("Error: ", err)
 	}
