@@ -39,7 +39,7 @@ func newUDPPacket(dst net.IP, srcPort, dstPort int, ttl, id int, payload []byte)
 	}
 	b, _ := ipHeader.Marshal()
 	data := bytes.NewBuffer(b)
-	binary.Write(data, binary.BigEndian, udp)
+	_ = binary.Write(data, binary.BigEndian, udp)
 	data.Write(payload)
 	return data.Bytes()
 }
