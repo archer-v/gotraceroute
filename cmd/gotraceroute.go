@@ -5,27 +5,36 @@ import (
 	"flag"
 	"fmt"
 	"github.com/aeden/traceroute"
+	"os"
+	"time"
 )
 
 func main() {
-	maxTTL := flag.Int("m", traceroute.DefaultMaxHops, `Set the max time-to-live (max number of hops) used in outgoing probe packets (default is 64)`)
-	startTTL := flag.Int("f", traceroute.DefaultStartTtl, `Set the first used time-to-live, e.g. the first hop (default is 1)`)
-	retries := flag.Int("q", 1, `Set the number of probes per hop (default is one probe).`)
-	jsonCompact := flag.Bool("j", false, "Out the result as a JSON in compact format (default false)")
-	jsonFormatted := flag.Bool("J", false, "Out the result as a JSON in pretty format (default false)")
+	maxTTL := flag.Int("m", traceroute.DefaultMaxHops, `Set the max time-to-live (max number of hops) used in outgoing probe packets`)
+	startTTL := flag.Int("f", traceroute.DefaultStartTtl, `Set the first used time-to-live, e.g. the first hop`)
+	retries := flag.Int("q", 1, `Set the number of probes per hop`)
+	port := flag.Int("p", traceroute.DefaultPort, `Set source and destination port to use`)
+	timeout := flag.Duration("z", time.Millisecond*traceroute.DefaultTimeoutMs, "Waiting timeout in ms")
+	pSize := flag.Int("l", 0, `Packet length`)
+	jsonCompact := flag.Bool("j", false, "Out the result as a JSON in compact format")
+	jsonFormatted := flag.Bool("J", false, "Out the result as a JSON in pretty format")
 
 	flag.Parse()
 	json := *jsonCompact || *jsonFormatted
 	host := flag.Arg(0)
 	if host == "" {
-		flag.PrintDefaults()
+		flag.Usage()
+		os.Exit(1)
 	}
-	options := traceroute.Options{}
-	options.Retries = *retries - 1
-	options.MaxHops = *maxTTL + 1
-	options.StartTTL = *startTTL
+	options := traceroute.Options{
+		Retries:     *retries,
+		MaxHops:     *maxTTL,
+		StartTTL:    *startTTL,
+		Port:        *port,
+		Timeout:     *timeout,
+		PayloadSize: *pSize,
+	}
 
-	fmt.Println("Testing unblocking traceroute")
 	c, err := traceroute.Run(context.Background(), host, options)
 
 	if err != nil {
@@ -33,7 +42,7 @@ func main() {
 		return
 	}
 
-	var total = 0
+	var lastHop traceroute.Hop
 	for hop := range c {
 		if hop.Step == 1 {
 			if json {
@@ -52,13 +61,18 @@ func main() {
 		if json {
 			fmt.Printf(hop.StringJSON(*jsonFormatted))
 		} else {
-			fmt.Printf(hop.StringHuman())
+			fmt.Println(hop.StringHuman())
 		}
-		total++
+		lastHop = hop
 	}
-	if total > 0 {
+	if lastHop.Step != 0 {
 		if json {
 			fmt.Printf("]")
 		}
+		if lastHop.Success && lastHop.Node.IP.Equal(lastHop.Dst.IP) {
+			os.Exit(0)
+		}
 	}
+
+	os.Exit(2)
 }
