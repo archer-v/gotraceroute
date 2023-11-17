@@ -9,15 +9,11 @@ import (
 )
 
 func printHop(hop traceroute.Hop) {
-	if hop.IcmpType != 0 {
+	if hop.Success {
 		fmt.Printf("%-3d %v (%v)  %vms\n", hop.Step, hop.Node.HostOrAddr(), hop.Node.IP.String(), hop.Elapsed.Milliseconds())
 	} else {
 		fmt.Printf("%-3d *\n", hop.Step)
 	}
-}
-
-func address(address [4]byte) string {
-	return fmt.Sprintf("%v.%v.%v.%v", address[0], address[1], address[2], address[3])
 }
 
 func main() {

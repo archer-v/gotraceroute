@@ -30,6 +30,8 @@ func (a *Addr) HostOrAddr() string {
 
 // Hop is a step in the network route between a source and destination address.
 type Hop struct {
+	// Success is a boolean value was the response received or not
+	Success bool
 	// Src is the source (ie, local) address.
 	Src Addr
 	// Dst is the destination (ie, remote) address.
@@ -60,6 +62,7 @@ func (h *Hop) String() string {
 
 func (h *Hop) Fields() map[string]interface{} {
 	return map[string]interface{}{
+		"success":  h.Success,
 		"srchost":  h.Src.Host,
 		"srcip":    h.Src.IP.String(),
 		"dsthost":  h.Dst.Host,
@@ -70,8 +73,7 @@ func (h *Hop) Fields() map[string]interface{} {
 		"id":       h.ID,
 		"sent":     h.Sent.Format(time.RFC3339Nano),
 		"received": h.Received.Format(time.RFC3339Nano),
-		"elapsed":  h.Elapsed.Seconds(),
-		"ms":       h.Elapsed.Milliseconds(),
+		"elapsed":  h.Elapsed.Milliseconds(),
 	}
 }
 
