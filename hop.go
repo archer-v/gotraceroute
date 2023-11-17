@@ -1,6 +1,7 @@
 package traceroute
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"time"
@@ -60,6 +61,22 @@ func (h *Hop) String() string {
 		h.Src.IP.String(), h.Dst.Host, h.Dst.IP.String(), h.Node.Host, h.Node.IP.String(), h.Step, h.Elapsed.String(), h.ID, h.IcmpType)
 }
 
+func (h *Hop) StringJSON(formatted bool) string {
+	var d []byte
+	if formatted {
+		d, _ = json.MarshalIndent(h, "", "    ")
+	} else {
+		d, _ = json.Marshal(h)
+	}
+	return string(d)
+}
+
+func (h *Hop) StringHuman() string {
+	if !h.Success {
+		return fmt.Sprintf("%-3d *", h.Step)
+	}
+	return fmt.Sprintf("%-3d %v (%v)  %vms", h.Step, h.Node.HostOrAddr(), h.Node.IP.String(), h.Elapsed.Milliseconds())
+}
 func (h *Hop) Fields() map[string]interface{} {
 	return map[string]interface{}{
 		"success":  h.Success,
