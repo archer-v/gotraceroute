@@ -133,17 +133,17 @@ func Run(ctx context.Context, dest string, options *Options, c ...chan Hop) (res
 
 	// Set up the socket to send packets out.
 	sendSocket, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
-	defer func() {
-		_ = syscall.Close(sendSocket)
-	}()
 	if err != nil {
 		return result, err
 	}
+	defer func() {
+		_ = syscall.Close(sendSocket)
+	}()
 
 	// Bind to the local socket to listen for ICMP packets
 	err = syscall.Bind(recvSocket, &syscall.SockaddrInet4{Port: options.port(), Addr: srcAddrBytes})
 
-	var packetBuff = make([]byte, 100)
+	var recvBuff = make([]byte, 100)
 	for ttl <= options.maxHops() && !hop.Node.IP.Equal(destAddr) {
 		start := time.Now()
 		packetID = (packetID + 1) % math.MaxUint16
@@ -157,50 +157,47 @@ func Run(ctx context.Context, dest string, options *Options, c ...chan Hop) (res
 			break
 		}
 
-		done := false
 		timeout := options.timeout()
 		// the socket receives any ICMP packets from anyone,
-		// so we need to filter and drop packets anyone else's ICMP packets and continue to receive
+		// so we need to filter and drop anyone else's ICMP packets and continue to receive
 		// with reduced timeout till the overall timeout happened or our target packet received
-		for !done && timeout > 0 {
+		for timeout > 0 {
 			// solution with SetsockoptTimeval isn't optimal, it's better to use poll (epoll)
 			tv := syscall.NsecToTimeval(timeout.Nanoseconds())
 			// This sets the timeout to wait for a response from the remote host
 			if err = syscall.SetsockoptTimeval(recvSocket, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, &tv); err != nil {
 				return
 			}
-			_, _, err := syscall.Recvfrom(recvSocket, packetBuff, 0)
+			_, _, err := syscall.Recvfrom(recvSocket, recvBuff, 0)
 			now := time.Now()
 			elapsed := now.Sub(start)
 
 			if err == nil {
-				hop, e = extractMessage(packetBuff)
+				hop, e = extractMessage(recvBuff)
 				if e != nil || hop.ID != flowId {
 					timeout = timeout - elapsed
 					continue
 				}
 
-				done = true
-
+				hop.Success = true
 				hop.Step = ttl
 				hop.Sent = start
 				hop.Received = now
 				hop.Elapsed = elapsed
+				break
 			} else {
 				// timeout
 				if err == syscall.EWOULDBLOCK {
 					timeout = 0
 				} else {
-					// something bad
+					// something bad (lack of resources or something else)
 					time.Sleep(time.Millisecond * 10)
 					timeout = timeout - time.Since(start)
 				}
 			}
 		}
 
-		if done {
-			result.Hops = append(result.Hops, hop)
-		} else {
+		if timeout <= 0 {
 			retry++
 			if retry <= options.retries() {
 				continue
@@ -211,6 +208,7 @@ func Run(ctx context.Context, dest string, options *Options, c ...chan Hop) (res
 			hop.Elapsed = time.Since(start)
 		}
 
+		result.Hops = append(result.Hops, hop)
 		notify(hop, c)
 		ttl += 1
 		retry = 0
