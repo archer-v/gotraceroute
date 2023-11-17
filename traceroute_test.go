@@ -10,18 +10,18 @@ var testHosts = []string{"google.com", "facebook.com", "starshiptroopers.dev", "
 var testErrHosts = []string{"aaaabbbcczzzzzz", "aaaabbbcczzzzzzdddd1.com", "266.266.266.266"}
 
 func TestRunBlock(t *testing.T) {
-	fmt.Println("Testing blocking traceroute")
+	fmt.Println("Testing blocking traceroute...")
 
-	out, err := RunBlock(testHosts[0], Options{})
+	hops, err := RunBlock(testHosts[0], Options{})
 	if err == nil {
-		if len(out.Hops) == 0 {
+		if len(hops) == 0 {
 			t.Errorf("TestTraceroute failed. Expected at least one hop")
 		}
 	} else {
 		t.Errorf("TestTraceroute failed due to an error: %v", err)
 	}
 
-	for _, hop := range out.Hops {
+	for _, hop := range hops {
 		fmt.Println(hop.StringHuman())
 	}
 	fmt.Println()

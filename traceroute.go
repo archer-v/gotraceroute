@@ -68,12 +68,6 @@ func destIp(dest string) (destAddr net.IP, err error) {
 	return ipAddr.IP, nil
 }
 
-// Result type
-type Result struct {
-	DestinationAddress net.IP
-	Hops               []Hop
-}
-
 // Run uses the given dest (hostname) and options to execute a traceroute
 // to the remote host.
 // Run is unblocked and returns a communication channel where the caller should read the Hop data
@@ -102,13 +96,13 @@ func Run(ctx context.Context, dest string, options Options) (c chan Hop, err err
 // RunBlock is blocked until traceroute finished and returns a Result which contains an array of hops. Each hop includes
 // the elapsed time and its IP address.
 // Outbound packets are UDP packets and inbound packets are ICMP.
-func RunBlock(dest string, options Options) (result Result, err error) {
+func RunBlock(dest string, options Options) (hops []Hop, err error) {
 	socketAddr, destAddr, sSocket, rSocket, err := prepare(dest, options)
 	if err != nil {
 		return
 	}
 
-	result, err = run(context.Background(), options, socketAddr, destAddr, sSocket, rSocket, nil)
+	hops, err = run(context.Background(), options, socketAddr, destAddr, sSocket, rSocket, nil)
 
 	_ = syscall.Close(sSocket)
 	_ = syscall.Close(rSocket)
@@ -159,15 +153,12 @@ func prepare(dest string, options Options) (socketAddr net.IP, destAddr net.IP, 
 	return
 }
 
-func run(ctx context.Context, options Options, socketAddr net.IP, destAddr net.IP, sSocket int, rSocket int, c chan Hop) (result Result, err error) {
+func run(ctx context.Context, options Options, socketAddr net.IP, destAddr net.IP, sSocket int, rSocket int, c chan Hop) (hops []Hop, err error) {
 	var hop Hop
 	port := options.port()
 
 	var dstAddrBytes [4]byte
 	copy(dstAddrBytes[:], destAddr.To4())
-
-	result.DestinationAddress = destAddr
-	result.Hops = []Hop{}
 
 	ttl := options.startTTL()
 	packetID := 0
@@ -239,7 +230,7 @@ func run(ctx context.Context, options Options, socketAddr net.IP, destAddr net.I
 			hop.Elapsed = time.Since(start)
 		}
 
-		result.Hops = append(result.Hops, hop)
+		hops = append(hops, hop)
 		if c != nil {
 			c <- hop
 		}
