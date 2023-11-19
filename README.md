@@ -7,6 +7,7 @@ Features:
   * structured output, in text or JSON
   * configurable options like: resolve domain names, starTTL, payloadSize, timeouts, retries
   * works correctly when launching in multiple concurrent processes
+  * doesn't catch ICMP replies for someone's else processes
   * ipv6 ready (in dev)
 
 To perform network operations, syscalls and RAW_SOCKETS are used. 
@@ -14,8 +15,13 @@ Therefore, in Linux, executing the command requires root privileges,
 or sudo, or you can set the SET_CAP_RAW flag on the executable file using the setcap command:
 ```setcap cap_net_raw+ep /path_to_exec_file```
 
+This library uses BPF (Berkley packet filter) connected to the socket to order to filter network packets at the kernel side.
+So it doesn't support on Windows and is not tested on Mac. I have no test environment to check this cases. 
+BPF can be disabled on Windows/Mac with the loss of the opportunity to work in a competitive mode.
 
-Must be run as sudo on Linux or set CAP_NET_RAW to an executable file
+Only 1024 concurrent 'traceroutes' at the same time is supported. 
+More concurrent traceroutes is allowed, but it leads to some packets would be lost. 
+
 
 ## CLI App
 
