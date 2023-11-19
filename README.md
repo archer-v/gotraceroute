@@ -15,8 +15,8 @@ Therefore, in Linux, executing the command requires root privileges,
 or sudo, or you can set the SET_CAP_RAW flag on the executable file using the setcap command:
 ```setcap cap_net_raw+ep /path_to_exec_file```
 
-This library uses BPF (Berkley packet filter) connected to the socket to order to filter network packets at the kernel side.
-So it doesn't support on Windows and is not tested on Mac. I have no test environment to check this cases. 
+This library uses BPF (Berkley packet filter) connected to the socket in order to filter network packets at the kernel side.
+BPF isn't supported on Windows and is not tested on Mac. I have no test environment to check this cases. 
 BPF can be disabled on Windows/Mac with the loss of the opportunity to work in a competitive mode.
 
 Only 1024 concurrent 'traceroutes' at the same time is supported. 
@@ -34,7 +34,6 @@ sudo ./gotraceroute example.com
 ## Library
 
 See traceroute_test.go for an example of how to use the library from within your application.
-
 
 The traceroute.Run() function accepts a domain name and an options struct and immediately returns with a channel where a Hop data struct should be reading from. When traceroute is finished, the channel will be closed.
 The traceroute.RunBlock() function accepts a domain name and an options struct, perform a traceroute and return array of Hop structs with traceroute result.
