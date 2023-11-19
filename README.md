@@ -34,6 +34,7 @@ sudo ./gotraceroute example.com
 See traceroute_test.go for an example of how to use the library from within your application.
 
 The traceroute.Run() function accepts a domain name and an options struct and immediately returns with a channel where a Hop data struct should be reading from. When traceroute is finished, the channel will be closed.
+
 The traceroute.RunBlock() function accepts a domain name and an options struct, perform a traceroute and return array of Hop structs with traceroute result.
 
 ## Resources
