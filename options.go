@@ -2,6 +2,14 @@ package traceroute
 
 import "time"
 
+const DefaultPort = 33434
+const DefaultMaxHops = 32
+const DefaultStartTtl = 1
+const DefaultTimeoutMs = 200
+const DefaultRetries = 2
+
+const maxHopsLimit = 63
+
 // Options type
 type Options struct {
 	Port        int
@@ -10,6 +18,7 @@ type Options struct {
 	Timeout     time.Duration
 	Retries     int
 	PayloadSize int
+	DontResolve bool
 }
 
 func (o *Options) port() int {
@@ -22,6 +31,9 @@ func (o *Options) port() int {
 func (o *Options) maxHops() int {
 	if o.MaxHops == 0 {
 		o.MaxHops = DefaultMaxHops
+	}
+	if o.MaxHops > maxHopsLimit {
+		o.MaxHops = maxHopsLimit
 	}
 	return o.MaxHops
 }
