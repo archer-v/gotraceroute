@@ -5,7 +5,7 @@ A traceroute library written in Go.
 Features:
   * blocking and non blocking mode
   * structured output, in text or JSON
-  * configurable options like: resolve domain names, starTTL, payloadSize, timeouts, retries
+  * configurable options like: resolve domain names, startTTL, payloadSize, timeouts, retries
   * works correctly when launching in multiple concurrent processes
   * doesn't catch ICMP replies for someone's else processes
   * ipv6 ready (in dev)
