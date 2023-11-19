@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 )
 
 var testHosts = []string{"google.com", "starshiptroopers.dev", "8.8.8.8", "1.1.1.1", "yahoo.com"}
@@ -32,14 +33,36 @@ func TestRunBlock(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	fmt.Println("Testing unblocking traceroute")
-	c, err := Run(context.Background(), testHosts[0], Options{})
+	hops, err := testRun(context.Background(), testHosts[0], Options{})
 
 	if err != nil {
 		t.Errorf("TestTraceroute failed due to an error: %v", err)
 		return
 	}
-	for hop := range c {
-		fmt.Println(hop.StringHuman())
+	if len(hops) == 0 {
+		t.Errorf("TestTraceroute failed. Expected at least one hop")
+	}
+}
+
+func TestRun2WithDeadline(t *testing.T) {
+	fmt.Println("Testing unblocking traceroute with deadline")
+	timeout := time.Millisecond * 400
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	started := time.Now()
+	hops, err := testRun(ctx, testHosts[0], Options{})
+
+	if err != nil {
+		t.Errorf("TestTraceroute failed due to an error: %v", err)
+		return
+	}
+	if len(hops) == 0 {
+		t.Errorf("TestTraceroute failed. Expected at least one hop")
+	}
+
+	if hops[len(hops)-1].Received.Sub(started) > timeout {
+		t.Errorf("TestTraceroute failed. Should stop not later than %v", timeout)
 	}
 }
 
@@ -106,4 +129,17 @@ func TestRun4Concurrent(t *testing.T) {
 			}
 		}
 	}
+}
+
+func testRun(ctx context.Context, host string, options Options) (hops []Hop, err error) {
+	c, err := Run(ctx, host, options)
+
+	if err != nil {
+		return
+	}
+	for hop := range c {
+		hops = append(hops, hop)
+		fmt.Println(hop.StringHuman())
+	}
+	return
 }

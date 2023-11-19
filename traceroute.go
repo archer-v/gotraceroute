@@ -48,7 +48,7 @@ func Run(ctx context.Context, dest string, options Options) (c chan Hop, err err
 
 	c = make(chan Hop)
 	go func() {
-		_, err = run(ctx, options, flow, c)
+		_, _ = run(ctx, options, flow, c)
 		flow.close()
 		close(c)
 	}()
@@ -93,7 +93,8 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 	retry := 0
 
 	var recvBuff = make([]byte, 100)
-	for ttl <= options.maxHops() && !hop.Node.IP.Equal(f.destAddr) {
+	var breaks = false
+	for ttl <= options.maxHops() && !hop.Node.IP.Equal(f.destAddr) && !breaks {
 		start := time.Now()
 		packetIdx = (packetIdx + 1) % (1<<6 - 1)
 		packetID := int(f.flowId<<6 + packetIdx)
@@ -107,24 +108,35 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 		}
 
 		timeout := options.timeout()
-		// in general the socket can receive any ICMP packets from anyone,
+		// in general the raw socket can receive any ICMP packets from anyone,
 		// so we need to filter and drop anyone else's ICMP packets and continue to receive
 		// with reduced timeout till the overall timeout happened or our target packet received
 		//
 		// It makes no sense if we use BPF filter, but we leave this solution here for a general case,
 		// if bpf filter disabled or not supported by OS, this solution guarantees a correct reception at least for single-threaded traceroute
 		for timeout > 0 {
-			// solution with SetsockoptTimeval isn't optimal, it's better to use poll (epoll)
+			select {
+			case <-ctx.Done():
+				err = ctx.Err()
+				break
+			default:
+
+			}
+			if err != nil {
+				break
+			}
+			// solution with using SetsockoptTimeval at every Recvfrom isn't optimal,
+			// it's better to use poll (epoll)
 			tv := syscall.NsecToTimeval(timeout.Nanoseconds())
 			// This sets the timeout to wait for a response from the remote host
 			if err = syscall.SetsockoptTimeval(f.rSocket, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, &tv); err != nil {
 				return
 			}
-			_, _, err := syscall.Recvfrom(f.rSocket, recvBuff, 0)
+			_, _, e := syscall.Recvfrom(f.rSocket, recvBuff, 0)
 			now := time.Now()
 			elapsed := now.Sub(start)
 
-			if err == nil {
+			if e == nil {
 				hop, e = extractMessage(recvBuff, !options.DontResolve)
 				if e != nil || hop.ID != packetID {
 					timeout = timeout - elapsed
@@ -139,7 +151,7 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 				break
 			} else {
 				// timeout
-				if err == syscall.EWOULDBLOCK {
+				if e == syscall.EWOULDBLOCK {
 					timeout = 0
 				} else {
 					// something bad (lack of resources or something else)
@@ -147,6 +159,10 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 					timeout = timeout - time.Since(start)
 				}
 			}
+		}
+
+		if err != nil {
+			break
 		}
 
 		if timeout <= 0 {
