@@ -7,8 +7,7 @@ Features:
   * structured output, in text or JSON
   * configurable options like: resolve domain names, startTTL, payloadSize, timeouts, retries
   * works correctly when launching in multiple concurrent processes
-  * doesn't catch ICMP replies for someone's else processes
-  * ipv6 ready (in dev)
+  * doesn't catch ICMP replies from someone's else processes 
 
 To perform network operations, syscalls and RAW_SOCKETS are used. 
 Therefore, in Linux, executing the command requires root privileges, 
@@ -29,7 +28,6 @@ More concurrent traceroutes is allowed, but it leads to some packets would be lo
 go build cmd/gotraceroute
 sudo ./gotraceroute example.com
 ```
-
 
 ## Library
 
