@@ -77,8 +77,8 @@ func extractMessage(p []byte) (hop Hop, err error) {
 		err = fmt.Errorf("source udp header too short: %d", len(udpHeader))
 		return
 	}
-	srcPort := binary.BigEndian.Uint16(udpHeader[0:2])
-	dstPort := binary.BigEndian.Uint16(udpHeader[2:4])
+	//srcPort := binary.BigEndian.Uint16(udpHeader[0:2])
+	//dstPort := binary.BigEndian.Uint16(udpHeader[2:4])
 	var name string
 	names, _ := net.LookupAddr(replyHeader.Src.String())
 	if len(names) > 0 {
@@ -87,7 +87,7 @@ func extractMessage(p []byte) (hop Hop, err error) {
 		name = replyHeader.Src.String()
 	}
 
-	hop = newHop(srcHeader.ID, srcHeader.Src, srcHeader.Dst, int(srcPort), int(dstPort))
+	hop = newHop(srcHeader.ID, srcHeader.Src, srcHeader.Dst, srcHeader.TTL)
 	hop.IcmpType = icmpType
 	hop.Node = Addr{
 		Host: name,

@@ -9,10 +9,7 @@ package traceroute
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
-	"github.com/jackpal/gateway"
-	"math"
 	"net"
 	"syscall"
 	"time"
@@ -23,36 +20,6 @@ const DefaultMaxHops = 64
 const DefaultStartTtl = 1
 const DefaultTimeoutMs = 200
 const DefaultRetries = 2
-
-// Return the first non-loopback address as a 4 byte IP address. This address
-// is used for sending packets out.
-
-func findAddress() (ip net.IP, err error) {
-	ip, err = gateway.DiscoverInterface()
-	if err != nil {
-		return localAddress()
-	}
-
-	return
-}
-
-// Return the first non-loopback address as a 4 byte IP address. This address
-// is used for sending packets out.
-func localAddress() (addr net.IP, err error) {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return
-	}
-	for _, a := range addrs {
-		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if len(ipnet.IP.To4()) == net.IPv4len {
-				return ipnet.IP.To4(), nil
-			}
-		}
-	}
-	err = errors.New("you do not appear to be connected to the Internet")
-	return
-}
 
 // destIp converts a given host name to IP address
 func destIp(dest string) (destAddr net.IP, err error) {
@@ -74,17 +41,21 @@ func destIp(dest string) (destAddr net.IP, err error) {
 // On finish or error the communication channel will be closed
 // Outbound packets are UDP packets and inbound packets are ICMP.
 func Run(ctx context.Context, dest string, options Options) (c chan Hop, err error) {
-	c = make(chan Hop)
 
-	socketAddr, destAddr, sSocket, rSocket, err := prepare(dest, options)
+	destAddr, err := destIp(dest)
 	if err != nil {
 		return
 	}
 
+	flow, err := newFlow(destAddr, options.Port)
+	if err != nil {
+		return
+	}
+
+	c = make(chan Hop)
 	go func() {
-		_, err = run(context.Background(), options, socketAddr, destAddr, sSocket, rSocket, c)
-		_ = syscall.Close(sSocket)
-		_ = syscall.Close(rSocket)
+		_, err = run(ctx, options, flow, c)
+		flow.close()
 		close(c)
 	}()
 
@@ -97,106 +68,74 @@ func Run(ctx context.Context, dest string, options Options) (c chan Hop, err err
 // the elapsed time and its IP address.
 // Outbound packets are UDP packets and inbound packets are ICMP.
 func RunBlock(dest string, options Options) (hops []Hop, err error) {
-	socketAddr, destAddr, sSocket, rSocket, err := prepare(dest, options)
+	destAddr, err := destIp(dest)
 	if err != nil {
 		return
 	}
 
-	hops, err = run(context.Background(), options, socketAddr, destAddr, sSocket, rSocket, nil)
+	flow, err := newFlow(destAddr, options.Port)
+	if err != nil {
+		return
+	}
 
-	_ = syscall.Close(sSocket)
-	_ = syscall.Close(rSocket)
+	hops, err = run(context.Background(), options, flow, nil)
+
+	flow.close()
 
 	return
 }
 
-func prepare(dest string, options Options) (socketAddr net.IP, destAddr net.IP, sSocket int, rSocket int, err error) {
-	var (
-		srcAddrBytes [4]byte
-	)
-
-	socketAddr, err = findAddress()
-	if err != nil {
-		return
-	}
-	copy(srcAddrBytes[:], socketAddr.To4())
-
-	destAddr, err = destIp(dest)
-	if err != nil {
-		return
-	}
-
-	// Set up the socket to receive inbound packets
-	rSocket, err = syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_ICMP)
-	if err != nil {
-		return
-	}
-	defer func() {
-		if err != nil {
-			_ = syscall.Close(rSocket)
-		}
-	}()
-
-	// Set up the socket to send packets out.
-	sSocket, err = syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
-	if err != nil {
-		return
-	}
-	defer func() {
-		if err != nil {
-			_ = syscall.Close(sSocket)
-		}
-	}()
-
-	// Bind to the local socket to listen for ICMP packets
-	err = syscall.Bind(rSocket, &syscall.SockaddrInet4{Port: options.port(), Addr: srcAddrBytes})
-	return
-}
-
-func run(ctx context.Context, options Options, socketAddr net.IP, destAddr net.IP, sSocket int, rSocket int, c chan Hop) (hops []Hop, err error) {
+func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop, err error) {
 	var hop Hop
 	port := options.port()
 
 	var dstAddrBytes [4]byte
-	copy(dstAddrBytes[:], destAddr.To4())
+	copy(dstAddrBytes[:], f.destAddr.To4())
 
 	ttl := options.startTTL()
-	packetID := 0
+
+	var packetIdx uint16
 	payload := bytes.Repeat([]byte{0x00}, options.payloadSize())
 	retry := 0
 
 	var recvBuff = make([]byte, 100)
-	for ttl <= options.maxHops() && !hop.Node.IP.Equal(destAddr) {
+	for ttl <= options.maxHops() && !hop.Node.IP.Equal(f.destAddr) {
 		start := time.Now()
-		packetID = (packetID + 1) % math.MaxUint16
-
-		pkt := newUDPPacket(destAddr, port, port, ttl, packetID, payload)
-		flowId := ipFlowID(packetID, destAddr, port, port)
+		packetIdx = (packetIdx + 1) % (1<<6 - 1)
+		packetID := int(f.flowId<<6 + packetIdx)
+		//fmt.Printf("send packetIdx: %v, packetID: %v, ttl: %v\n", packetIdx, packetID, ttl)
+		pkt := newUDPPacket(f.destAddr, port, port, ttl, packetID, payload)
+		//flowId := ipFlowID(f.flowId, f.destAddr, port, port)
 		// Send a UDP packet
-		e := syscall.Sendto(sSocket, pkt, 0, &syscall.SockaddrInet4{Port: port, Addr: dstAddrBytes})
+		e := syscall.Sendto(f.sSocket, pkt, 0, &syscall.SockaddrInet4{Port: port, Addr: dstAddrBytes})
 		if e != nil {
 			err = fmt.Errorf("sendto error: %w", e)
 			break
 		}
 
 		timeout := options.timeout()
-		// the socket receives any ICMP packets from anyone,
+		// in general the socket can receive any ICMP packets from anyone,
 		// so we need to filter and drop anyone else's ICMP packets and continue to receive
 		// with reduced timeout till the overall timeout happened or our target packet received
+		//
+		// It makes no sense if we use BPF filter, but we leave this solution here for a general case,
+		// if bpf filter disabled or not supported by OS, this solution guarantees a correct reception at least for single-threaded traceroute
 		for timeout > 0 {
 			// solution with SetsockoptTimeval isn't optimal, it's better to use poll (epoll)
 			tv := syscall.NsecToTimeval(timeout.Nanoseconds())
 			// This sets the timeout to wait for a response from the remote host
-			if err = syscall.SetsockoptTimeval(rSocket, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, &tv); err != nil {
+			if err = syscall.SetsockoptTimeval(f.rSocket, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, &tv); err != nil {
 				return
 			}
-			_, _, err := syscall.Recvfrom(rSocket, recvBuff, 0)
+			_, _, err := syscall.Recvfrom(f.rSocket, recvBuff, 0)
 			now := time.Now()
 			elapsed := now.Sub(start)
 
 			if err == nil {
 				hop, e = extractMessage(recvBuff)
-				if e != nil || hop.ID != flowId {
+				//fmt.Printf("recv ID: %v\n", hop.ID)
+				//fmt.Println(hop.StringHuman())
+				if e != nil || hop.ID != packetID {
 					timeout = timeout - elapsed
 					continue
 				}
@@ -224,8 +163,7 @@ func run(ctx context.Context, options Options, socketAddr net.IP, destAddr net.I
 			if retry <= options.retries() {
 				continue
 			}
-			hop = newHop(packetID, socketAddr, destAddr, port, port)
-			hop.Step = ttl
+			hop = newHop(int(f.flowId), f.socketAddr, f.destAddr, ttl)
 			hop.Sent = start
 			hop.Elapsed = time.Since(start)
 		}

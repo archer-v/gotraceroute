@@ -43,7 +43,7 @@ type Hop struct {
 	Step int
 	// ID is a unique ID that is used to match the original request with the ICMP response.
 	// It can be derived from either the request or the response.
-	ID string
+	ID int
 	// DstPort is the destination port targeted.
 	DstPort int
 	// Sent is the time the query began.
@@ -57,7 +57,7 @@ type Hop struct {
 }
 
 func (h *Hop) String() string {
-	return fmt.Sprintf("Src: %s, Dst: %s (%s), Node: %s (%s), Step: %d, Elapsed: %s, ID: %s, Type: %d",
+	return fmt.Sprintf("Src: %s, Dst: %s (%s), Node: %s (%s), Step: %d, Elapsed: %s, ID: %v, Type: %d",
 		h.Src.IP.String(), h.Dst.Host, h.Dst.IP.String(), h.Node.Host, h.Node.IP.String(), h.Step, h.Elapsed.String(), h.ID, h.IcmpType)
 }
 
@@ -94,7 +94,7 @@ func (h *Hop) Fields() map[string]interface{} {
 	}
 }
 
-func newHop(flowId int, src net.IP, dst net.IP, sport int, dport int) Hop {
+func newHop(flowId int, src net.IP, dst net.IP, ttl int) Hop {
 	return Hop{
 		Src: Addr{
 			IP: src,
@@ -102,6 +102,7 @@ func newHop(flowId int, src net.IP, dst net.IP, sport int, dport int) Hop {
 		Dst: Addr{
 			IP: dst,
 		},
-		ID: ipFlowID(flowId, dst, sport, dport),
+		ID:   flowId,
+		Step: ttl,
 	}
 }

@@ -1,4 +1,4 @@
-module github.com/aeden/traceroute
+module github.com/archer-v/gotraceroute
 
 go 1.21
 
