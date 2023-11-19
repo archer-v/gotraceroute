@@ -15,12 +15,6 @@ import (
 	"time"
 )
 
-const DefaultPort = 33434
-const DefaultMaxHops = 64
-const DefaultStartTtl = 1
-const DefaultTimeoutMs = 200
-const DefaultRetries = 2
-
 // destIp converts a given host name to IP address
 func destIp(dest string) (destAddr net.IP, err error) {
 	addrs, err := net.LookupHost(dest)
@@ -47,7 +41,7 @@ func Run(ctx context.Context, dest string, options Options) (c chan Hop, err err
 		return
 	}
 
-	flow, err := newFlow(destAddr, options.Port)
+	flow, err := newFlow(destAddr, options.port())
 	if err != nil {
 		return
 	}
@@ -73,7 +67,7 @@ func RunBlock(dest string, options Options) (hops []Hop, err error) {
 		return
 	}
 
-	flow, err := newFlow(destAddr, options.Port)
+	flow, err := newFlow(destAddr, options.port())
 	if err != nil {
 		return
 	}
@@ -105,7 +99,6 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 		packetID := int(f.flowId<<6 + packetIdx)
 		//fmt.Printf("send packetIdx: %v, packetID: %v, ttl: %v\n", packetIdx, packetID, ttl)
 		pkt := newUDPPacket(f.destAddr, port, port, ttl, packetID, payload)
-		//flowId := ipFlowID(f.flowId, f.destAddr, port, port)
 		// Send a UDP packet
 		e := syscall.Sendto(f.sSocket, pkt, 0, &syscall.SockaddrInet4{Port: port, Addr: dstAddrBytes})
 		if e != nil {
@@ -132,9 +125,7 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 			elapsed := now.Sub(start)
 
 			if err == nil {
-				hop, e = extractMessage(recvBuff)
-				//fmt.Printf("recv ID: %v\n", hop.ID)
-				//fmt.Println(hop.StringHuman())
+				hop, e = extractMessage(recvBuff, !options.DontResolve)
 				if e != nil || hop.ID != packetID {
 					timeout = timeout - elapsed
 					continue

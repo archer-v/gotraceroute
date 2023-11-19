@@ -44,7 +44,7 @@ func newUDPPacket(dst net.IP, srcPort, dstPort int, ttl, id int, payload []byte)
 	return data.Bytes()
 }
 
-func extractMessage(p []byte) (hop Hop, err error) {
+func extractMessage(p []byte, resolveToName bool) (hop Hop, err error) {
 	// borrowed from https://github.com/Syncbak-Git/traceroute/blob/master/icmp.go
 
 	// get the reply IPv4 header. That will have the node address
@@ -78,20 +78,20 @@ func extractMessage(p []byte) (hop Hop, err error) {
 		return
 	}
 	//srcPort := binary.BigEndian.Uint16(udpHeader[0:2])
-	//dstPort := binary.BigEndian.Uint16(udpHeader[2:4])
-	var name string
-	names, _ := net.LookupAddr(replyHeader.Src.String())
-	if len(names) > 0 {
-		name = names[0]
-	} else {
-		name = replyHeader.Src.String()
-	}
+	dstPort := binary.BigEndian.Uint16(udpHeader[2:4])
 
 	hop = newHop(srcHeader.ID, srcHeader.Src, srcHeader.Dst, srcHeader.TTL)
 	hop.IcmpType = icmpType
+	hop.DstPort = int(dstPort)
 	hop.Node = Addr{
-		Host: name,
-		IP:   replyHeader.Src,
+		IP: replyHeader.Src,
+	}
+
+	if resolveToName {
+		names, _ := net.LookupAddr(replyHeader.Src.String())
+		if len(names) > 0 {
+			hop.Node.Host = names[0]
+		}
 	}
 	return
 }

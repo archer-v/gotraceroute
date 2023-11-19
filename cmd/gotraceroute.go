@@ -24,6 +24,7 @@ func main() {
 	flag.IntVar(&options.Port, "p", traceroute.DefaultPort, `Set source and destination port to use`)
 	flag.DurationVar(&options.Timeout, "z", time.Millisecond*traceroute.DefaultTimeoutMs, "Waiting timeout in ms")
 	flag.IntVar(&options.PayloadSize, "l", 0, `Packet length`)
+	flag.BoolVar(&options.DontResolve, "n", false, "Do not resolve IP addresses to domain names")
 	flag.BoolVar(&jsonCompact, "j", false, "Out the result as a JSON in compact format")
 	flag.BoolVar(&jsonFormatted, "J", false, "Out the result as a JSON in pretty format")
 
