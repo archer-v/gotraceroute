@@ -30,12 +30,14 @@ go build cmd/gotraceroute
 sudo ./gotraceroute example.com
 ```
 
+
 ## Library
 
 See traceroute_test.go for an example of how to use the library from within your application.
 
 
-The traceroute.Traceroute() function accepts a domain name and an options struct and returns a TracerouteResult struct that holds an array of TracerouteHop structs.
+The traceroute.Run() function accepts a domain name and an options struct and immediately returns with a channel where a Hop data struct should be reading from. When traceroute is finished, the channel will be closed.
+The traceroute.RunBlock() function accepts a domain name and an options struct, perform a traceroute and return array of Hop structs with traceroute result.
 
 ## Resources
 
@@ -54,7 +56,7 @@ Useful resources:
 
 ## Thanks
 
-Based on traceroute implementation https://github.com/aeden/traceroute which was significantly reworked and
+Based on traceroute implementation https://github.com/aeden/traceroute which was fully reworked and
 as a result several annoying bugs was fixed, error handling was added, and it was adopted to concurrent execution.
 Some ideas about packet construction and decoding also was get from https://github.com/Syncbak-Git/traceroute
 
