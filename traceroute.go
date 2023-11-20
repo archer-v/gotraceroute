@@ -41,7 +41,7 @@ func Run(ctx context.Context, dest string, options Options) (c chan Hop, err err
 		return
 	}
 
-	flow, err := newFlow(destAddr, options.port())
+	flow, err := newFlow(destAddr, options.port(), options.NetworkInterface)
 	if err != nil {
 		return
 	}
@@ -67,7 +67,7 @@ func RunBlock(dest string, options Options) (hops []Hop, err error) {
 		return
 	}
 
-	flow, err := newFlow(destAddr, options.port())
+	flow, err := newFlow(destAddr, options.port(), options.NetworkInterface)
 	if err != nil {
 		return
 	}
