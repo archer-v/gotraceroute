@@ -10,7 +10,6 @@ import (
 
 var testHosts = []string{"google.com", "starshiptroopers.dev", "8.8.8.8", "1.1.1.1", "yahoo.com"}
 
-// var testHosts = []string{"google.com", "facebook.com", "starshiptroopers.dev", "msn.com", "bing.com", "8.8.8.8"}
 var testErrHosts = []string{"aaaabbbcczzzzzz", "aaaabbbcczzzzzzdddd1.com", "266.266.266.266"}
 
 func TestRunBlock(t *testing.T) {
@@ -19,10 +18,10 @@ func TestRunBlock(t *testing.T) {
 	hops, err := RunBlock(testHosts[0], Options{})
 	if err == nil {
 		if len(hops) == 0 {
-			t.Errorf("TestTraceroute failed. Expected at least one hop")
+			t.Errorf("TestRunBlock failed. Expected at least one hop")
 		}
 	} else {
-		t.Errorf("TestTraceroute failed due to an error: %v", err)
+		t.Errorf("TestRunBlock failed due to an error: %v", err)
 	}
 
 	for _, hop := range hops {
@@ -31,16 +30,16 @@ func TestRunBlock(t *testing.T) {
 	fmt.Println()
 }
 
-func TestRun(t *testing.T) {
+func TestRun1(t *testing.T) {
 	fmt.Println("Testing unblocking traceroute")
 	hops, err := testRun(context.Background(), testHosts[0], Options{})
 
 	if err != nil {
-		t.Errorf("TestTraceroute failed due to an error: %v", err)
+		t.Errorf("TestRun1 failed due to an error: %v", err)
 		return
 	}
 	if len(hops) == 0 {
-		t.Errorf("TestTraceroute failed. Expected at least one hop")
+		t.Errorf("TestRun1 failed. Expected at least one hop")
 	}
 }
 
@@ -54,15 +53,15 @@ func TestRun2WithDeadline(t *testing.T) {
 	hops, err := testRun(ctx, testHosts[0], Options{})
 
 	if err != nil {
-		t.Errorf("TestTraceroute failed due to an error: %v", err)
+		t.Errorf("TestRun2WithDeadline failed due to an error: %v", err)
 		return
 	}
 	if len(hops) == 0 {
-		t.Errorf("TestTraceroute failed. Expected at least one hop")
+		t.Errorf("TestRun2WithDeadline failed. Expected at least one hop")
 	}
 
 	if hops[len(hops)-1].Received.Sub(started) > timeout {
-		t.Errorf("TestTraceroute failed. Should stop not later than %v", timeout)
+		t.Errorf("TestRun2WithDeadline failed. Should stop not later than %v", timeout)
 	}
 }
 
@@ -70,7 +69,7 @@ func TestRun3Error(t *testing.T) {
 	for _, h := range testErrHosts {
 		_, err := RunBlock(h, Options{})
 		if err == nil {
-			t.Errorf("TestTraceroute failed. Expected error on host: %v", h)
+			t.Errorf("TestRun3Error failed. Expected error on host: %v", h)
 		} else {
 			fmt.Printf("Got error as expected on traceroute to host %v: %v\n", h, err)
 		}
@@ -123,10 +122,17 @@ func TestRun4Concurrent(t *testing.T) {
 
 	for i, r := range results {
 		fmt.Printf("Traceroute result %v to host %v:\n", i+1, testHosts[i])
+		succCount := 0
 		for _, h := range r {
 			if h.Step > 0 {
 				fmt.Println(h.StringHuman())
 			}
+			if h.Success {
+				succCount++
+			}
+		}
+		if succCount == 0 {
+			t.Errorf("Traceroute result to %v doesn't contain success hops", testHosts[i])
 		}
 	}
 }
@@ -140,6 +146,15 @@ func testRun(ctx context.Context, host string, options Options) (hops []Hop, err
 	for hop := range c {
 		hops = append(hops, hop)
 		fmt.Println(hop.StringHuman())
+	}
+	return
+}
+
+func testCountSuccess(hops []Hop) (n int) {
+	for _, h := range hops {
+		if h.Success {
+			n++
+		}
 	}
 	return
 }
