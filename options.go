@@ -12,13 +12,14 @@ const maxHopsLimit = 63
 
 // Options type
 type Options struct {
-	Port        int
-	MaxHops     int
-	StartTTL    int
-	Timeout     time.Duration
-	Retries     int
-	PayloadSize int
-	DontResolve bool
+	Port             int
+	MaxHops          int
+	StartTTL         int
+	Timeout          time.Duration
+	Retries          int
+	PayloadSize      int
+	NetworkInterface string
+	DontResolve      bool
 }
 
 func (o *Options) port() int {

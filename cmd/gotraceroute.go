@@ -15,9 +15,19 @@ var (
 	jsonCompact   bool
 	jsonFormatted bool
 	host          string
+	version       bool
 )
 
+var gitTag, gitCommit, gitBranch, buildTimestamp, versionString string
+
 func main() {
+
+	if buildTimestamp == "" {
+		versionString = fmt.Sprintf("version: DEV")
+	} else {
+		versionString = fmt.Sprintf("version: %v-%v-%v, build: %v", gitTag, gitBranch, gitCommit, buildTimestamp)
+	}
+
 	flag.IntVar(&options.MaxHops, "m", traceroute.DefaultMaxHops, `Set the max time-to-live (max number of hops) used in outgoing probe packets`)
 	flag.IntVar(&options.StartTTL, "f", traceroute.DefaultStartTtl, `Set the first used time-to-live, e.g. the first hop`)
 	flag.IntVar(&options.Retries, "q", 1, `Set the number of probes per hop`)
@@ -25,14 +35,22 @@ func main() {
 	flag.DurationVar(&options.Timeout, "z", time.Millisecond*traceroute.DefaultTimeoutMs, "Waiting timeout in ms")
 	flag.IntVar(&options.PayloadSize, "l", 0, `Packet length`)
 	flag.BoolVar(&options.DontResolve, "n", false, "Do not resolve IP addresses to domain names")
-	flag.BoolVar(&jsonCompact, "j", false, "Out the result as a JSON in compact format")
-	flag.BoolVar(&jsonFormatted, "J", false, "Out the result as a JSON in pretty format")
+	flag.StringVar(&options.NetworkInterface, "i", "", `Set the network interface to use`)
+	flag.BoolVar(&jsonCompact, "j", false, "Output the result in JSON compact format")
+	flag.BoolVar(&jsonFormatted, "J", false, "Output the result in JSON pretty format")
+	flag.BoolVar(&version, "v", false, "Output an application version and exit")
 
 	flag.Parse()
 	json = jsonCompact || jsonFormatted
+	if version {
+		fmt.Println(versionString)
+		os.Exit(0)
+	}
+
 	host = flag.Arg(0)
 	if host == "" {
-		flag.Usage()
+		fmt.Println("Usage of ./gotraceroute [options] host")
+		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
