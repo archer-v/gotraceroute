@@ -16,7 +16,7 @@ import (
 )
 
 // destIp converts a given host name to IP address
-func destIp(dest string) (destAddr net.IP, err error) {
+func destIP(dest string) (destAddr net.IP, err error) {
 	addrs, err := net.LookupHost(dest)
 	if err != nil {
 		return
@@ -35,8 +35,7 @@ func destIp(dest string) (destAddr net.IP, err error) {
 // On finish or error the communication channel will be closed
 // Outbound packets are UDP packets and inbound packets are ICMP.
 func Run(ctx context.Context, dest string, options Options) (c chan Hop, err error) {
-
-	destAddr, err := destIp(dest)
+	destAddr, err := destIP(dest)
 	if err != nil {
 		return
 	}
@@ -62,7 +61,7 @@ func Run(ctx context.Context, dest string, options Options) (c chan Hop, err err
 // the elapsed time and its IP address.
 // Outbound packets are UDP packets and inbound packets are ICMP.
 func RunBlock(dest string, options Options) (hops []Hop, err error) {
-	destAddr, err := destIp(dest)
+	destAddr, err := destIP(dest)
 	if err != nil {
 		return
 	}
@@ -79,6 +78,7 @@ func RunBlock(dest string, options Options) (hops []Hop, err error) {
 	return
 }
 
+//nolint:funlen
 func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop, err error) {
 	var hop Hop
 	port := options.port()
@@ -97,8 +97,7 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 	for ttl <= options.maxHops() && !hop.Node.IP.Equal(f.destAddr) && !breaks {
 		start := time.Now()
 		packetIdx = (packetIdx + 1) % (1<<6 - 1)
-		packetID := int(f.flowId<<6 + packetIdx)
-		//fmt.Printf("send packetIdx: %v, packetID: %v, ttl: %v\n", packetIdx, packetID, ttl)
+		packetID := int(f.flowID<<6 + packetIdx)
 		pkt := newUDPPacket(f.destAddr, port, port, ttl, packetID, payload)
 		// Send a UDP packet
 		e := syscall.Sendto(f.sSocket, pkt, 0, &syscall.SockaddrInet4{Port: port, Addr: dstAddrBytes})
@@ -120,7 +119,6 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 				err = ctx.Err()
 				break
 			default:
-
 			}
 			if err != nil {
 				break
@@ -139,7 +137,7 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 			if e == nil {
 				hop, e = extractMessage(recvBuff, !options.DontResolve)
 				if e != nil || hop.ID != packetID {
-					timeout = timeout - elapsed
+					timeout -= elapsed
 					continue
 				}
 
@@ -170,7 +168,7 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 			if retry <= options.retries() {
 				continue
 			}
-			hop = newHop(int(f.flowId), f.socketAddr, f.destAddr, ttl)
+			hop = newHop(int(f.flowID), f.socketAddr, f.destAddr, ttl)
 			hop.Sent = start
 			hop.Elapsed = time.Since(start)
 		}

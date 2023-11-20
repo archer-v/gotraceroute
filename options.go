@@ -4,7 +4,7 @@ import "time"
 
 const DefaultPort = 33434
 const DefaultMaxHops = 32
-const DefaultStartTtl = 1
+const DefaultStartTTL = 1
 const DefaultTimeoutMs = 200
 const DefaultRetries = 2
 
@@ -41,7 +41,7 @@ func (o *Options) maxHops() int {
 
 func (o *Options) startTTL() int {
 	if o.StartTTL == 0 {
-		o.StartTTL = DefaultStartTtl
+		o.StartTTL = DefaultStartTTL
 	}
 	return o.StartTTL
 }

@@ -94,7 +94,7 @@ func (h *Hop) Fields() map[string]interface{} {
 	}
 }
 
-func newHop(flowId int, src net.IP, dst net.IP, ttl int) Hop {
+func newHop(flowID int, src net.IP, dst net.IP, ttl int) Hop {
 	return Hop{
 		Src: Addr{
 			IP: src,
@@ -102,7 +102,7 @@ func newHop(flowId int, src net.IP, dst net.IP, ttl int) Hop {
 		Dst: Addr{
 			IP: dst,
 		},
-		ID:   flowId,
+		ID:   flowID,
 		Step: ttl,
 	}
 }

@@ -29,7 +29,7 @@ func main() {
 	}
 
 	flag.IntVar(&options.MaxHops, "m", traceroute.DefaultMaxHops, `Set the max time-to-live (max number of hops) used in outgoing probe packets`)
-	flag.IntVar(&options.StartTTL, "f", traceroute.DefaultStartTtl, `Set the first used time-to-live, e.g. the first hop`)
+	flag.IntVar(&options.StartTTL, "f", traceroute.DefaultStartTTL, `Set the first used time-to-live, e.g. the first hop`)
 	flag.IntVar(&options.Retries, "q", 1, `Set the number of probes per hop`)
 	flag.IntVar(&options.Port, "p", traceroute.DefaultPort, `Set source and destination port to use`)
 	flag.DurationVar(&options.Timeout, "z", time.Millisecond*traceroute.DefaultTimeoutMs, "Waiting timeout in ms")

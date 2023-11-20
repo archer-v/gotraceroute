@@ -8,8 +8,8 @@ import (
 	"syscall"
 )
 
-var nextFlowId uint16 = 0
-var nextFlowIdMutex sync.Mutex
+var nextFlowId uint16
+var nextFlowIDMutex sync.Mutex
 
 // flow describes one traceroute flow to the address destAddr,
 // should be created with newFlow and close() method should be call when
@@ -19,7 +19,7 @@ type flow struct {
 	destAddr   net.IP
 	sSocket    int
 	rSocket    int
-	flowId     uint16
+	flowID     uint16
 }
 
 func (f *flow) close() {
@@ -28,6 +28,8 @@ func (f *flow) close() {
 }
 
 // newFlow initializes sockets and returns flow struct
+//
+//nolint:funlen
 func newFlow(destAddr net.IP, srcPort int, networkInterface string) (f flow, err error) {
 	f.destAddr = destAddr
 	f.socketAddr, err = findSocketAddress(networkInterface)
@@ -87,13 +89,13 @@ func newFlow(destAddr net.IP, srcPort int, networkInterface string) (f flow, err
 	*/
 
 	// assign flowId to identify only this flow packets on a raw socket
-	nextFlowIdMutex.Lock()
-	f.flowId = nextFlowId
+	nextFlowIDMutex.Lock()
+	f.flowID = nextFlowId
 	nextFlowId = (nextFlowId + 1) % (1<<10 - 1) // max 10 bits assign to flowId
-	nextFlowIdMutex.Unlock()
+	nextFlowIDMutex.Unlock()
 
 	// apply BPF filter to the socket
-	err = bpfFlowId(f.flowId).applyToSocket(f.rSocket)
+	err = bpfFlowID(f.flowID).applyToSocket(f.rSocket)
 
 	if err != nil {
 		err = fmt.Errorf("can't apply bpf filter: %w", err)

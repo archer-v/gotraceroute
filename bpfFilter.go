@@ -11,7 +11,7 @@ import (
 type BPF []bpf.Instruction
 
 // bpfFlowId returns a bfp program instructions that filters a traffic by flowId
-func bpfFlowId(flowId uint16) BPF {
+func bpfFlowID(flowId uint16) BPF {
 	return []bpf.Instruction{
 		// Load Protocol field of IP header
 		bpf.LoadAbsolute{Off: 0x09, Size: 1},

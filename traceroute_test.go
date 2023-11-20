@@ -100,17 +100,15 @@ func TestRun4Concurrent(t *testing.T) {
 		if err != nil {
 			continue
 		}
-		//results[i] = make([]Hop, options.MaxHops)
+
 		results[i] = []Hop{}
 		var mu sync.Mutex
 
 		wg.Add(1)
 		go func(i int, host string, channel chan Hop) {
 			for hop := range channel {
-				//fmt.Printf("Traceroute %v: %v\n", i, hop.StringHuman())
 				mu.Lock()
 				results[i] = append(results[i], hop)
-				//results[i][hop.Step-1] = hop
 				mu.Unlock()
 			}
 			fmt.Printf("Traceroute %v to %v: finished\n", i+1, host)
