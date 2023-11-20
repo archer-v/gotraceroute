@@ -115,15 +115,6 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 		// It makes no sense if we use BPF filter, but we leave this solution here for a general case,
 		// if bpf filter disabled or not supported by OS, this solution guarantees a correct reception at least for single-threaded traceroute
 		for timeout > 0 {
-			select {
-			case <-ctx.Done():
-				err = ctx.Err()
-				break
-			default:
-			}
-			if err != nil {
-				break
-			}
 			// solution with using SetsockoptTimeval at every Recvfrom isn't optimal,
 			// it's better to use poll (epoll)
 			tv := syscall.NsecToTimeval(timeout.Nanoseconds())
@@ -159,6 +150,13 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 			hop.Received = now
 			hop.Elapsed = elapsed
 			break
+		}
+
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+			break
+		default:
 		}
 
 		if err != nil {
