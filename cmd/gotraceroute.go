@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	options       traceroute.Options
+	options       gotraceroute.Options
 	json          bool
 	jsonCompact   bool
 	jsonFormatted bool
@@ -28,11 +28,11 @@ func main() {
 		versionString = fmt.Sprintf("version: %v-%v-%v, build: %v", gitTag, gitBranch, gitCommit, buildTimestamp)
 	}
 
-	flag.IntVar(&options.MaxHops, "m", traceroute.DefaultMaxHops, `Set the max time-to-live (max number of hops) used in outgoing probe packets`)
-	flag.IntVar(&options.StartTTL, "f", traceroute.DefaultStartTTL, `Set the first used time-to-live, e.g. the first hop`)
+	flag.IntVar(&options.MaxHops, "m", gotraceroute.DefaultMaxHops, `Set the max time-to-live (max number of hops) used in outgoing probe packets`)
+	flag.IntVar(&options.StartTTL, "f", gotraceroute.DefaultStartTTL, `Set the first used time-to-live, e.g. the first hop`)
 	flag.IntVar(&options.Retries, "q", 1, `Set the number of probes per hop`)
-	flag.IntVar(&options.Port, "p", traceroute.DefaultPort, `Set source and destination port to use`)
-	flag.DurationVar(&options.Timeout, "z", time.Millisecond*traceroute.DefaultTimeoutMs, "Waiting timeout in ms")
+	flag.IntVar(&options.Port, "p", gotraceroute.DefaultPort, `Set source and destination port to use`)
+	flag.DurationVar(&options.Timeout, "z", time.Millisecond*gotraceroute.DefaultTimeoutMs, "Waiting timeout in ms")
 	flag.IntVar(&options.PayloadSize, "l", 0, `Packet length`)
 	flag.BoolVar(&options.DontResolve, "n", false, "Do not resolve IP addresses to domain names")
 	flag.StringVar(&options.NetworkInterface, "i", "", `Set the network interface to use`)
@@ -54,14 +54,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	c, err := traceroute.Run(context.Background(), host, options)
+	c, err := gotraceroute.Run(context.Background(), host, options)
 
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	var lastHop traceroute.Hop
+	var lastHop gotraceroute.Hop
 	for hop := range c {
 		displayHop(hop)
 		lastHop = hop
@@ -79,7 +79,7 @@ func main() {
 	os.Exit(2)
 }
 
-func displayHop(h traceroute.Hop) {
+func displayHop(h gotraceroute.Hop) {
 	if h.Step == 1 {
 		if json {
 			fmt.Printf("[")

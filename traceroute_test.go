@@ -1,4 +1,4 @@
-package traceroute
+package gotraceroute
 
 import (
 	"context"
@@ -144,15 +144,6 @@ func testRun(ctx context.Context, host string, options Options) (hops []Hop, err
 	for hop := range c {
 		hops = append(hops, hop)
 		fmt.Println(hop.StringHuman())
-	}
-	return
-}
-
-func testCountSuccess(hops []Hop) (n int) {
-	for _, h := range hops {
-		if h.Success {
-			n++
-		}
 	}
 	return
 }

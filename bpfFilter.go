@@ -1,4 +1,4 @@
-package traceroute
+package gotraceroute
 
 import (
 	"fmt"

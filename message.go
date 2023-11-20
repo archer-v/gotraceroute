@@ -1,4 +1,4 @@
-package traceroute
+package gotraceroute
 
 // borrowed from https://github.com/Syncbak-Git/traceroute/blob/master/socket.go
 
@@ -94,8 +94,4 @@ func extractMessage(p []byte, resolveToName bool) (hop Hop, err error) {
 		}
 	}
 	return
-}
-
-func ipFlowID(ipHeaderID int, destIP net.IP, srcPort, destPort int) string {
-	return fmt.Sprintf("%d|%s|%d|%d", ipHeaderID, destIP.String(), srcPort, destPort)
 }

@@ -4,7 +4,7 @@
 // as a result several annoying bugs was fixed, error handling was added, and it was adopted to concurrent execution
 // Some ideas about packet construction and decoding also was get from https://github.com/Syncbak-Git/traceroute
 
-package traceroute
+package gotraceroute
 
 import (
 	"bytes"
@@ -79,6 +79,7 @@ func RunBlock(dest string, options Options) (hops []Hop, err error) {
 }
 
 //nolint:funlen
+//nolint:gocognit
 func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop, err error) {
 	var hop Hop
 	port := options.port()
@@ -93,8 +94,8 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 	retry := 0
 
 	var recvBuff = make([]byte, 100)
-	var breaks = false
-	for ttl <= options.maxHops() && !hop.Node.IP.Equal(f.destAddr) && !breaks {
+
+	for ttl <= options.maxHops() && !hop.Node.IP.Equal(f.destAddr) {
 		start := time.Now()
 		packetIdx = (packetIdx + 1) % (1<<6 - 1)
 		packetID := int(f.flowID<<6 + packetIdx)
@@ -134,29 +135,30 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 			now := time.Now()
 			elapsed := now.Sub(start)
 
-			if e == nil {
-				hop, e = extractMessage(recvBuff, !options.DontResolve)
-				if e != nil || hop.ID != packetID {
-					timeout -= elapsed
-					continue
-				}
-
-				hop.Success = true
-				hop.Step = ttl
-				hop.Sent = start
-				hop.Received = now
-				hop.Elapsed = elapsed
-				break
-			} else {
+			if e != nil {
 				// timeout
 				if e == syscall.EWOULDBLOCK {
 					timeout = 0
 				} else {
 					// something bad (lack of resources or something else)
 					time.Sleep(time.Millisecond * 10)
-					timeout = timeout - time.Since(start)
+					timeout -= time.Since(start)
 				}
+				continue
 			}
+
+			hop, e = extractMessage(recvBuff, !options.DontResolve)
+			if e != nil || hop.ID != packetID {
+				timeout -= elapsed
+				continue
+			}
+
+			hop.Success = true
+			hop.Step = ttl
+			hop.Sent = start
+			hop.Received = now
+			hop.Elapsed = elapsed
+			break
 		}
 
 		if err != nil {
@@ -177,7 +179,7 @@ func run(ctx context.Context, options Options, f flow, c chan<- Hop) (hops []Hop
 		if c != nil {
 			c <- hop
 		}
-		ttl += 1
+		ttl++
 		retry = 0
 	}
 	return
