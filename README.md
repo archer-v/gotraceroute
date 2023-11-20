@@ -7,8 +7,7 @@ Features:
   * structured output, in text or JSON
   * configurable options like: resolve domain names, startTTL, payloadSize, timeouts, retries
   * works correctly when launching in multiple concurrent processes
-  * doesn't catch ICMP replies for someone's else processes
-  * ipv6 ready (in dev)
+  * doesn't catch ICMP replies from someone's else processes 
 
 To perform network operations, syscalls and RAW_SOCKETS are used. 
 Therefore, in Linux, executing the command requires root privileges, 
@@ -30,13 +29,13 @@ go build cmd/gotraceroute
 sudo ./gotraceroute example.com
 ```
 
-
 ## Library
 
 See traceroute_test.go for an example of how to use the library from within your application.
 
-The traceroute.Run() function accepts a domain name and an options struct and immediately returns with a channel where a Hop data struct should be reading from. When traceroute is finished, the channel will be closed.
-The traceroute.RunBlock() function accepts a domain name and an options struct, perform a traceroute and return array of Hop structs with traceroute result.
+The gotraceroute.Run() function accepts a domain name and an options struct and immediately returns with a channel where a Hop data struct should be reading from. When traceroute is finished, the channel will be closed.
+
+The gotraceroute.RunBlock() function accepts a domain name and an options struct, perform a traceroute and returns an array of Hop structs with traceroute result.
 
 ## Resources
 
@@ -57,5 +56,7 @@ Useful resources:
 
 Based on traceroute implementation https://github.com/aeden/traceroute which was fully reworked and
 as a result several annoying bugs was fixed, error handling was added, and it was adopted to concurrent execution.
+
 Some ideas about packet construction and decoding also was get from https://github.com/Syncbak-Git/traceroute
 
+How to apply BPF to a raw socket in golang, thanks to: https://riyazali.net/posts/berkeley-packet-filter-in-golang/
