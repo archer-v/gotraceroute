@@ -21,9 +21,8 @@ var (
 var gitTag, gitCommit, gitBranch, buildTimestamp, versionString string
 
 func main() {
-
 	if buildTimestamp == "" {
-		versionString = fmt.Sprintf("version: DEV")
+		versionString = "version: DEV"
 	} else {
 		versionString = fmt.Sprintf("version: %v-%v-%v, build: %v", gitTag, gitBranch, gitCommit, buildTimestamp)
 	}
@@ -95,7 +94,7 @@ func displayHop(h gotraceroute.Hop) {
 		}
 	}
 	if json {
-		fmt.Printf(h.StringJSON(jsonFormatted))
+		fmt.Print(h.StringJSON(jsonFormatted))
 	} else {
 		fmt.Println(h.StringHuman())
 	}

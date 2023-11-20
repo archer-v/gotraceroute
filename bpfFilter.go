@@ -11,7 +11,7 @@ import (
 type BPF []bpf.Instruction
 
 // bpfFlowId returns a bfp program instructions that filters a traffic by flowId
-func bpfFlowID(flowId uint16) BPF {
+func bpfFlowID(flowID uint16) BPF {
 	return []bpf.Instruction{
 		// Load Protocol field of IP header
 		bpf.LoadAbsolute{Off: 0x09, Size: 1},
@@ -25,7 +25,7 @@ func bpfFlowID(flowId uint16) BPF {
 		// apply mask of flowId field
 		bpf.ALUOpConstant{Op: bpf.ALUOpAnd, Val: (1<<10 - 1) << 6},
 		// Skip over the next instruction if packet id isn't flowId .
-		bpf.JumpIf{Cond: bpf.JumpEqual, Val: uint32(flowId << 6), SkipTrue: 1},
+		bpf.JumpIf{Cond: bpf.JumpEqual, Val: uint32(flowID << 6), SkipTrue: 1},
 		// return
 		bpf.RetConstant{Val: 0},
 		// Verdict is "send up to 256bytes of the packet to userspace."
@@ -45,15 +45,15 @@ func (filter BPF) applyToSocket(socket int) (err error) {
 
 	var program = unix.SockFprog{
 		Len:    uint16(len(assembled)),
-		Filter: (*unix.SockFilter)(unsafe.Pointer(&assembled[0])),
+		Filter: (*unix.SockFilter)(unsafe.Pointer(&assembled[0])), // #nosec G103
 	}
-	var b = (*[unix.SizeofSockFprog]byte)(unsafe.Pointer(&program))[:unix.SizeofSockFprog]
+	var b = (*[unix.SizeofSockFprog]byte)(unsafe.Pointer(&program))[:unix.SizeofSockFprog] // #nosec G103
 
 	if _, _, errno := syscall.Syscall6(syscall.SYS_SETSOCKOPT,
 		uintptr(socket), uintptr(syscall.SOL_SOCKET), uintptr(syscall.SO_ATTACH_FILTER),
 		uintptr(unsafe.Pointer(&b[0])), uintptr(len(b)), 0); errno != 0 {
 		return errno
-	}
+	} // #nosec G103
 
 	return nil
 }

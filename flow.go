@@ -8,7 +8,7 @@ import (
 	"syscall"
 )
 
-var nextFlowId uint16
+var nextFlowID uint16
 var nextFlowIDMutex sync.Mutex
 
 // flow describes one traceroute flow to the address destAddr,
@@ -90,8 +90,8 @@ func newFlow(destAddr net.IP, srcPort int, networkInterface string) (f flow, err
 
 	// assign flowId to identify only this flow packets on a raw socket
 	nextFlowIDMutex.Lock()
-	f.flowID = nextFlowId
-	nextFlowId = (nextFlowId + 1) % (1<<10 - 1) // max 10 bits assign to flowId
+	f.flowID = nextFlowID
+	nextFlowID = (nextFlowID + 1) % (1<<10 - 1) // max 10 bits assign to flowId
 	nextFlowIDMutex.Unlock()
 
 	// apply BPF filter to the socket
